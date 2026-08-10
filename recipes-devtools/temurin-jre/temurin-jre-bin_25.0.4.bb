@@ -21,7 +21,7 @@ TEMURIN_FILE = "OpenJDK25U-jre_aarch64_linux_hotspot_25.0.4_7.tar.gz"
 SRC_URI = "https://github.com/adoptium/temurin25-binaries/releases/download/${@d.getVar('TEMURIN_TAG').replace('+', '%2B')}/${TEMURIN_FILE};downloadfilename=${TEMURIN_FILE}"
 SRC_URI[sha256sum] = "1f2644427000316bc431df3389504551ed7464fe8486bf6b4f1130af9ffc8f55"
 
-S = "${WORKDIR}/jdk-25.0.4+7-jre"
+S = "${UNPACKDIR}/jdk-25.0.4+7-jre"
 
 # This is a prebuilt aarch64 binary — only valid on 64-bit Arm.
 COMPATIBLE_HOST = "aarch64.*-linux"

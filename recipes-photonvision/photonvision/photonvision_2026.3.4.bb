@@ -40,14 +40,14 @@ do_install() {
     # The application jar lives in /opt/photonvision, exactly where the
     # upstream service's WorkingDirectory + ExecStart expect it.
     install -d ${D}/opt/photonvision
-    install -m 0644 ${WORKDIR}/${PV_JAR} ${D}/opt/photonvision/photonvision.jar
+    install -m 0644 ${UNPACKDIR}/${PV_JAR} ${D}/opt/photonvision/photonvision.jar
 
     # PhotonVision writes its config/logs under the working dir; make sure the
     # tree exists so the first boot doesn't race on mkdir.
     install -d ${D}/opt/photonvision/logs
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/photonvision.service ${D}${systemd_system_unitdir}/photonvision.service
+    install -m 0644 ${UNPACKDIR}/photonvision.service ${D}${systemd_system_unitdir}/photonvision.service
 }
 
 FILES:${PN} += "/opt/photonvision ${systemd_system_unitdir}/photonvision.service"
