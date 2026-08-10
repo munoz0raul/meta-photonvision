@@ -6,6 +6,12 @@ ready-to-run vision coprocessor."
 
 inherit packagegroup
 
+# libatomic is dynamically renamed per-arch (libatomic -> libatomic1), and an
+# allarch packagegroup is not allowed to depend on such packages. Several of
+# our RDEPENDS (the JRE, native camera libs) are arch-specific anyway, so make
+# this packagegroup machine-specific.
+PACKAGE_ARCH = "${MACHINE_ARCH}"
+
 RDEPENDS:${PN} = " \
     photonvision \
     temurin-jre-bin \
