@@ -55,7 +55,13 @@ do_install() {
 # The tarball ships stripped ELF binaries and .so files with an embedded
 # RPATH/interpreter that the QA framework flags. These are expected for a
 # prebuilt JRE.
-INSANE_SKIP:${PN} += "already-stripped ldflags rpaths libdir dev-so staticdev arch"
+#
+# file-rdeps: a few optional JRE libs pull in X11 / ALSA at the ELF level —
+#   libsplashscreen.so (X11), libawt_xawt.so (X11 AWT toolkit), libjsound.so
+#   (ALSA). PhotonVision runs fully headless, so none of these are loaded and
+#   we deliberately do not drag libX11/libXext/libXi/libXrender/libXtst/alsa
+#   into the image just to satisfy the scanner.
+INSANE_SKIP:${PN} += "already-stripped ldflags rpaths libdir dev-so staticdev arch file-rdeps"
 
 FILES:${PN} = "${INSTALL_DIR} ${bindir}"
 
