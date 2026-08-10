@@ -7,11 +7,10 @@ HOMEPAGE = "https://adoptium.net"
 
 # OpenJDK is GPL-2.0 with the Classpath exception.
 LICENSE = "GPL-2.0-with-classpath-exception"
-# TODO(verify): the md5 below is a PLACEHOLDER. After the first fetch, run:
-#   md5sum tmp/work/*/temurin-jre-bin/*/jdk-25.0.4+7-jre/legal/java.base/LICENSE
-# and paste the real value here. bitbake will also print the correct md5 in the
-# "LIC_FILES_CHKSUM does not match" error on first build.
-LIC_FILES_CHKSUM = "file://legal/java.base/LICENSE;md5=00000000000000000000000000000000"
+# md5 of legal/java.base/LICENSE inside the Temurin 25.0.4+7 JRE tarball
+# (verified from a real do_populate_lic run). If you bump the JRE, bitbake
+# prints the new md5 on a checksum mismatch.
+LIC_FILES_CHKSUM = "file://legal/java.base/LICENSE;md5=3e0b59f8fac05c3c03d4a26bbda13f8f"
 
 # Prebuilt binary release pinned to a specific Temurin build.
 PV = "25.0.4+7"

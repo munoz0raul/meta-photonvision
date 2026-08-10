@@ -27,6 +27,10 @@ SRC_URI[sha256sum] = "ccaf5e862a4427c90cb063953903e4967e2041747b1d3f9d0f04b68e1c
 # Prebuilt arm64 JAR (contains native OpenCV/libcamera/mrcal .so for arm64).
 COMPATIBLE_HOST = "aarch64.*-linux"
 
+# The JAR is not extracted into a source tree, so point S at UNPACKDIR (where
+# the downloaded file lands) to avoid the "S doesn't exist" do_unpack warning.
+S = "${UNPACKDIR}"
+
 inherit systemd
 
 SYSTEMD_SERVICE:${PN} = "photonvision.service"
