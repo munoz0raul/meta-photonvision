@@ -38,6 +38,11 @@ do_install() {
     install -d ${D}${INSTALL_DIR}
     cp -a ${S}/. ${D}${INSTALL_DIR}/
 
+    # The upstream tarball preserves Adoptium's build-host uid/gid, which do not
+    # exist on this build machine and break do_package (getpwuid failure).
+    # Normalise ownership to root.
+    chown -R root:root ${D}${INSTALL_DIR}
+
     # Expose the runtime on PATH as the system java.
     install -d ${D}${bindir}
     for tool in java keytool rmiregistry; do
