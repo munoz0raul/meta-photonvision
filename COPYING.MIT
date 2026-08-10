@@ -1,0 +1,8 @@
+This layer is licensed under the MIT License (the layer metadata / recipes).
+
+The software it packages carries its own licenses:
+
+  - PhotonVision      : GPL-3.0-or-later  (https://github.com/PhotonVision/photonvision)
+  - Eclipse Temurin   : GPL-2.0-with-classpath-exception (OpenJDK)
+
+See the individual recipes for LICENSE fields and checksum pinning.
