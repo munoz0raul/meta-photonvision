@@ -1,0 +1,20 @@
+[Unit]
+Description=Service that runs PhotonVision
+# PhotonVision needs the network up (NetworkTables + web UI on :5800).
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/photonvision
+# Run photonvision at "nice" -10, higher priority than standard.
+Nice=-10
+# For non-uniform CPUs (big.LITTLE) you may want to pin the big cores, e.g.:
+# AllowedCPUs=4-7
+ExecStart=/usr/bin/java -Xmx512m -jar /opt/photonvision/photonvision.jar
+ExecStop=/bin/systemctl kill photonvision
+Type=simple
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
