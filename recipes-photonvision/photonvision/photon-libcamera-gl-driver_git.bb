@@ -7,7 +7,6 @@ HOMEPAGE = "https://github.com/munoz0raul/photon-libcamera-gl-driver"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-# Pin to the tip of our feature branch (update SRCREV on every rebase/merge).
 SRCREV = "db12e1b19b3ba961d1dc799820ea88c8f63f9c96"
 SRC_URI = "git://github.com/munoz0raul/photon-libcamera-gl-driver.git;protocol=https;branch=feature/imx577-qcs8275 \
            https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/thirdparty/frc2025/opencv/opencv-cpp/4.10.0-3/opencv-cpp-4.10.0-3-linuxarm64.zip;name=opencv_lib;subdir=opencv_lib \
@@ -18,14 +17,14 @@ SRC_URI[opencv_header.sha256sum] = "b5b7c4a73300b71b96569a26041bc59702b6d4974e60
 
 inherit cmake pkgconfig
 
-# libcamera pkg-config is available in the QLI sysroot.
 DEPENDS = "libcamera virtual/egl virtual/libgles2 virtual/libgbm libdrm pkgconfig-native"
 
-# JNI headers: pass them directly from the photonvision build tools JDK so
-# CMake skips find_package(JNI) (which would need a host JDK in the sysroot).
-# The JDK is already present on this build server from the PhotonVision Gradle build.
+# JNI headers from the PhotonVision Gradle-bootstrapped JDK on this build server.
+# This avoids needing an openjdk recipe in the Yocto layer set.
 JNI_INCLUDE = "/local/mnt/workspace/build/photonvision-src/tools/jdk-17.0.13+11/include"
 
+# Tell CMake where the pre-fetched OpenCV zips are so FetchContent works
+# offline (Yocto sets FETCHCONTENT_FULLY_DISCONNECTED=true during do_configure).
 EXTRA_OECMAKE = " \
     -DCMAKE_BUILD_TYPE=Release \
     -DJNI_INCLUDE_DIRS='${JNI_INCLUDE};${JNI_INCLUDE}/linux' \
@@ -41,5 +40,9 @@ do_install() {
 FILES:${PN} = "${libdir}/libphotonlibcamera.so"
 FILES:${PN}-dev = ""
 
-# The .so is arm64 and intentionally has no soname — suppress QA noise.
-INSANE_SKIP:${PN} += "ldflags dev-so"
+# libphotonlibcamera.so links against OpenCV libs that are bundled inside
+# the PhotonVision fat JAR (extracted to ~/.wpilib/nativecache at runtime),
+# not installed as Yocto packages — suppress the resulting QA warnings.
+# buildpaths: debug .so embeds the build-server TMPDIR path (harmless).
+INSANE_SKIP:${PN} += "ldflags dev-so file-rdeps"
+INSANE_SKIP:${PN}-dbg += "buildpaths"

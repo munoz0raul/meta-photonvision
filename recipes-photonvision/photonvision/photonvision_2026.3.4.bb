@@ -43,8 +43,8 @@ SYSTEMD_AUTO_ENABLE = "enable"
 do_compile[noexec] = "1"
 
 # Depend on our locally-built driver so libphotonlibcamera.so is in the sysroot
-# before we try to patch it into the JAR.
-do_install[depends] += "photon-libcamera-gl-driver:do_populate_sysroot"
+# before we try to patch it into the JAR. python3-native provides ${PYTHON}.
+do_install[depends] += "photon-libcamera-gl-driver:do_populate_sysroot python3-native:do_populate_sysroot"
 
 do_install() {
     install -d ${D}/opt/photonvision
