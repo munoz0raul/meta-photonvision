@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 """
-Replace linux/arm64/shared/libphotonlibcamera.so inside a PhotonVision fat JAR
-and refresh its MD5 checksum in ResourceInformation.json.
+Patch a PhotonVision fat JAR for QCS8275 / IMX577 support:
+  1. Replace linux/arm64/shared/libphotonlibcamera.so with the Yocto-built
+     version (linked against libcamera.so.0.6, adds ABGR8888 single-plane path)
+  2. Replace the 6 Java .class files that open the libcamera JNI gate on
+     QCS8275 and add IMX577 SensorModel / video modes
+  3. Refresh ResourceInformation.json with the new .so MD5
 
-Uses only Python stdlib (zipfile) — no jar(1) required.
+Uses only Python stdlib (zipfile, tarfile) — no jar(1) or javac required.
 
 Usage:
-    patch-libphotonlibcamera.py <photonvision.jar> <new-libphotonlibcamera.so>
+    patch-libphotonlibcamera.py <photonvision.jar> <libphotonlibcamera.so> <java-patches.tar.gz>
 """
 import hashlib
 import json
 import os
 import shutil
 import sys
+import tarfile
 import zipfile
 
 JAR_SO_PATH = "linux/arm64/shared/libphotonlibcamera.so"
 RI_JSON_PATH = "ResourceInformation.json"
-
-
-def md5(path):
-    return hashlib.md5(open(path, "rb").read()).hexdigest()
 
 
 def rewrite_zip(src, dst, replacements):
@@ -28,56 +29,58 @@ def rewrite_zip(src, dst, replacements):
     with zipfile.ZipFile(src, "r") as zin, \
          zipfile.ZipFile(dst, "w", compression=zipfile.ZIP_DEFLATED) as zout:
         for item in zin.infolist():
-            if item.filename in replacements:
-                data = replacements[item.filename]
-            else:
-                data = zin.read(item.filename)
-            # Preserve the original ZipInfo (permissions, timestamp, etc.)
-            zout.writestr(item, data)
+            zout.writestr(item, replacements.get(item.filename, zin.read(item.filename)))
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit(f"Usage: {sys.argv[0]} <photonvision.jar> <new.so>")
+    if len(sys.argv) != 4:
+        sys.exit(f"Usage: {sys.argv[0]} <photonvision.jar> <new.so> <java-patches.tar.gz>")
 
-    jar_path, so_path = sys.argv[1], sys.argv[2]
+    jar_path, so_path, tar_path = sys.argv[1], sys.argv[2], sys.argv[3]
 
-    if not os.path.isfile(jar_path):
-        sys.exit(f"JAR not found: {jar_path}")
-    if not os.path.isfile(so_path):
-        sys.exit(f".so not found: {so_path}")
+    for p in (jar_path, so_path, tar_path):
+        if not os.path.isfile(p):
+            sys.exit(f"File not found: {p}")
 
+    replacements = {}
+
+    # 1. New libphotonlibcamera.so
     new_so_data = open(so_path, "rb").read()
     new_hash = hashlib.md5(new_so_data).hexdigest()
+    replacements[JAR_SO_PATH] = new_so_data
 
-    # Read and update ResourceInformation.json from the JAR
+    # 2. Java class patches from tarball
+    with tarfile.open(tar_path, "r:gz") as t:
+        for member in t.getmembers():
+            if member.isfile():
+                replacements[member.name] = t.extractfile(member).read()
+
+    # 3. Update ResourceInformation.json
     with zipfile.ZipFile(jar_path, "r") as z:
         ri_data = json.loads(z.read(RI_JSON_PATH))
 
     ri_key = "/" + JAR_SO_PATH
     arm64_hashes = (
-        ri_data.get("platforms", {})
-        .get("linux", {})
-        .get("architectures", {})
-        .get("arm64", {})
-        .get("fileHashes", {})
+        ri_data.setdefault("platforms", {})
+               .setdefault("linux", {})
+               .setdefault("architectures", {})
+               .setdefault("arm64", {})
+               .setdefault("fileHashes", {})
     )
-    if ri_key not in arm64_hashes:
-        print(f"WARNING: {ri_key} not in ResourceInformation.json; adding it")
     arm64_hashes[ri_key] = new_hash
-    new_ri_data = json.dumps(ri_data).encode()
+    replacements[RI_JSON_PATH] = json.dumps(ri_data).encode()
 
-    # Rewrite the JAR atomically using a temp file
+    # Rewrite JAR atomically
     tmp_path = jar_path + ".patching"
-    rewrite_zip(jar_path, tmp_path, {
-        JAR_SO_PATH: new_so_data,
-        RI_JSON_PATH: new_ri_data,
-    })
+    rewrite_zip(jar_path, tmp_path, replacements)
     shutil.move(tmp_path, jar_path)
 
     print(f"Patched {jar_path}:")
     print(f"  {JAR_SO_PATH}  md5={new_hash}")
     print(f"  {RI_JSON_PATH} updated")
+    for k in sorted(replacements):
+        if k not in (JAR_SO_PATH, RI_JSON_PATH):
+            print(f"  {k} patched")
 
 
 if __name__ == "__main__":

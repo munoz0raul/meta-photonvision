@@ -21,7 +21,8 @@ PV_JAR = "photonvision-${PV_TAG}-linuxarm64.jar"
 
 SRC_URI = "https://github.com/PhotonVision/photonvision/releases/download/${PV_TAG}/${PV_JAR};downloadfilename=${PV_JAR};unpack=0 \
            file://photonvision.service \
-           file://patch-libphotonlibcamera.py"
+           file://patch-libphotonlibcamera.py \
+           file://photon-java-patches.tar.gz;unpack=0"
 SRC_URI[sha256sum] = "ccaf5e862a4427c90cb063953903e4967e2041747b1d3f9d0f04b68e1cd975dc"
 # ^ sha256 of photonvision-v2026.3.4-linuxarm64.jar (verified). If you bump PV,
 #   recompute:  curl -sL <url> | sha256sum
@@ -55,7 +56,8 @@ do_install() {
     # the JAR and refreshes its MD5 in ResourceInformation.json.
     ${PYTHON} ${UNPACKDIR}/patch-libphotonlibcamera.py \
         ${D}/opt/photonvision/photonvision.jar \
-        ${STAGING_LIBDIR}/libphotonlibcamera.so
+        ${STAGING_LIBDIR}/libphotonlibcamera.so \
+        ${UNPACKDIR}/photon-java-patches.tar.gz
 
     install -d ${D}/opt/photonvision/logs
 
