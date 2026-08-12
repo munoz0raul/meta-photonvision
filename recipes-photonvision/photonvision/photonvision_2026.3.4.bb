@@ -22,7 +22,8 @@ PV_JAR = "photonvision-${PV_TAG}-linuxarm64.jar"
 SRC_URI = "https://github.com/PhotonVision/photonvision/releases/download/${PV_TAG}/${PV_JAR};downloadfilename=${PV_JAR};unpack=0 \
            file://photonvision.service \
            file://patch-libphotonlibcamera.py \
-           file://photon-java-patches.tar.gz;unpack=0"
+           file://photon-java-patches.tar.gz;unpack=0 \
+           file://photonvision-modules.conf"
 SRC_URI[sha256sum] = "ccaf5e862a4427c90cb063953903e4967e2041747b1d3f9d0f04b68e1cd975dc"
 # ^ sha256 of photonvision-v2026.3.4-linuxarm64.jar (verified). If you bump PV,
 #   recompute:  curl -sL <url> | sha256sum
@@ -63,9 +64,12 @@ do_install() {
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/photonvision.service ${D}${systemd_system_unitdir}/photonvision.service
+
+    install -d ${D}${sysconfdir}/modules-load.d
+    install -m 0644 ${UNPACKDIR}/photonvision-modules.conf ${D}${sysconfdir}/modules-load.d/photonvision.conf
 }
 
-FILES:${PN} += "/opt/photonvision ${systemd_system_unitdir}/photonvision.service"
+FILES:${PN} += "/opt/photonvision ${systemd_system_unitdir}/photonvision.service ${sysconfdir}/modules-load.d/photonvision.conf"
 
 # Runtime dependencies. The JRE is our bundled Temurin build; the rest match
 # the packages photon-image-modifier apt-installs on Debian:
