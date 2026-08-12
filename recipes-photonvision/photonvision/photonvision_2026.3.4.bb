@@ -1,8 +1,9 @@
 SUMMARY = "PhotonVision — FRC vision coprocessor software"
 DESCRIPTION = "PhotonVision is a free, fast, open-source vision-processing \
-solution for FIRST Robotics Competition. This recipe installs the upstream \
-prebuilt linuxarm64 fat JAR to /opt/photonvision and runs it as a systemd \
-service, mirroring the official photon-image-modifier install for Debian."
+solution for FIRST Robotics Competition. Installs the upstream prebuilt \
+linuxarm64 fat JAR to /opt/photonvision and runs it as a systemd service. \
+The bundled libphotonlibcamera.so is replaced at install time with a locally \
+built version that adds IMX577 / single-plane ABGR8888 support for QCS8275."
 HOMEPAGE = "https://photonvision.org"
 BUGTRACKER = "https://github.com/PhotonVision/photonvision/issues"
 
@@ -19,7 +20,10 @@ PV_TAG = "v${PV}"
 PV_JAR = "photonvision-${PV_TAG}-linuxarm64.jar"
 
 SRC_URI = "https://github.com/PhotonVision/photonvision/releases/download/${PV_TAG}/${PV_JAR};downloadfilename=${PV_JAR};unpack=0 \
-           file://photonvision.service"
+           file://photonvision.service \
+           file://patch-libphotonlibcamera.py \
+           file://photon-java-patches.tar.gz;unpack=0 \
+           file://photonvision-modules.conf"
 SRC_URI[sha256sum] = "ccaf5e862a4427c90cb063953903e4967e2041747b1d3f9d0f04b68e1cd975dc"
 # ^ sha256 of photonvision-v2026.3.4-linuxarm64.jar (verified). If you bump PV,
 #   recompute:  curl -sL <url> | sha256sum
@@ -40,21 +44,32 @@ SYSTEMD_AUTO_ENABLE = "enable"
 # Nothing to compile — it's a fat JAR.
 do_compile[noexec] = "1"
 
+# Depend on our locally-built driver so libphotonlibcamera.so is in the sysroot
+# before we try to patch it into the JAR. python3-native provides ${PYTHON}.
+do_install[depends] += "photon-libcamera-gl-driver:do_populate_sysroot python3-native:do_populate_sysroot"
+
 do_install() {
-    # The application jar lives in /opt/photonvision, exactly where the
-    # upstream service's WorkingDirectory + ExecStart expect it.
     install -d ${D}/opt/photonvision
     install -m 0644 ${UNPACKDIR}/${PV_JAR} ${D}/opt/photonvision/photonvision.jar
 
-    # PhotonVision writes its config/logs under the working dir; make sure the
-    # tree exists so the first boot doesn't race on mkdir.
+    # Replace the bundled libphotonlibcamera.so with our QCS8275-capable build.
+    # The helper script updates linux/arm64/shared/libphotonlibcamera.so inside
+    # the JAR and refreshes its MD5 in ResourceInformation.json.
+    ${PYTHON} ${UNPACKDIR}/patch-libphotonlibcamera.py \
+        ${D}/opt/photonvision/photonvision.jar \
+        ${STAGING_LIBDIR}/libphotonlibcamera.so \
+        ${UNPACKDIR}/photon-java-patches.tar.gz
+
     install -d ${D}/opt/photonvision/logs
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/photonvision.service ${D}${systemd_system_unitdir}/photonvision.service
+
+    install -d ${D}${sysconfdir}/modules-load.d
+    install -m 0644 ${UNPACKDIR}/photonvision-modules.conf ${D}${sysconfdir}/modules-load.d/photonvision.conf
 }
 
-FILES:${PN} += "/opt/photonvision ${systemd_system_unitdir}/photonvision.service"
+FILES:${PN} += "/opt/photonvision ${systemd_system_unitdir}/photonvision.service ${sysconfdir}/modules-load.d/photonvision.conf"
 
 # Runtime dependencies. The JRE is our bundled Temurin build; the rest match
 # the packages photon-image-modifier apt-installs on Debian:
