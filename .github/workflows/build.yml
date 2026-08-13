@@ -1,0 +1,47 @@
+name: Build PhotonVision image
+
+on:
+  push:
+    branches: [imx577-qcs8275]
+  pull_request:
+    branches: [imx577-qcs8275]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, yocto]
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout meta-photonvision
+        uses: actions/checkout@v4
+        with:
+          path: meta-photonvision
+
+      - name: Run kas build
+        run: |
+          export PATH="/usr2/raulrm/.local/bin:$PATH"
+          export KAS_WORK_DIR=/local/mnt/workspace/build/wrynose-baseline
+          export DL_DIR=/local/mnt/workspace/build/downloads
+          export SSTATE_DIR=/local/mnt/workspace/build/sstate-cache
+          export BB_HASHSERVE_DB_DIR=/local/mnt/workspace/build/sstate-cache
+          umask 0022
+
+          # Sync the checked-out layer into the kas workspace
+          rsync -a --delete ${{ github.workspace }}/meta-photonvision/ \
+            /local/mnt/workspace/build/wrynose-baseline/meta-photonvision/
+
+          cd /local/mnt/workspace/build/wrynose-baseline
+          kas build meta-qcom/ci/iq-8275-evk.yml:meta-qcom/ci/qcom-distro.yml:meta-qcom/ci/performance.yml:meta-qcom/ci/photonvision-local.yml
+
+      - name: Verify shader fix in built .so
+        run: |
+          SO=$(find /local/mnt/workspace/build/wrynose-baseline/build/tmp/sysroots-components/armv8-2a/photon-libcamera-gl-driver -name "libphotonlibcamera.so" 2>/dev/null | head -1)
+          echo "Checking: $SO"
+          count=$(strings "$SO" | grep -c 'float(i) - 1.0')
+          echo "Shader fix occurrences: $count"
+          test "$count" -ge 1
+
+      - name: Report artifact path
+        run: |
+          ls -lh /local/mnt/workspace/build/wrynose-baseline/build/tmp/deploy/images/iq-8275-evk/qcom-multimedia-proprietary-image-iq-8275-evk.rootfs.qcomflash.tar.gz
