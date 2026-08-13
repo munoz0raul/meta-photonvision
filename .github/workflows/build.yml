@@ -7,10 +7,20 @@ on:
 
 jobs:
   build:
+    name: Build (${{ matrix.board }})
     runs-on: [self-hosted, linux, yocto]
     timeout-minutes: 60
     permissions:
       contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - board: iq-8275-evk
+            kas_machine: meta-qcom/ci/iq-8275-evk.yml
+          - board: iq-9075-evk
+            kas_machine: meta-qcom/ci/iq-9075-evk.yml
 
     steps:
       - name: Checkout meta-photonvision
@@ -31,7 +41,7 @@ jobs:
             /local/mnt/workspace/build/wrynose-baseline/meta-photonvision/
 
           cd /local/mnt/workspace/build/wrynose-baseline
-          kas build meta-qcom/ci/iq-8275-evk.yml:meta-qcom/ci/qcom-distro.yml:meta-qcom/ci/performance.yml:meta-qcom/ci/photonvision-local.yml
+          kas build ${{ matrix.kas_machine }}:meta-qcom/ci/qcom-distro.yml:meta-qcom/ci/performance.yml:meta-qcom/ci/photonvision-local.yml
 
       - name: Verify shader fix in built .so
         run: |
@@ -45,17 +55,16 @@ jobs:
       - name: Stage and split artifact for release
         id: artifact
         run: |
-          TARBALL=$(readlink -f /local/mnt/workspace/build/wrynose-baseline/build/tmp/deploy/images/iq-8275-evk/qcom-multimedia-proprietary-image-iq-8275-evk.rootfs.qcomflash.tar.gz)
+          TARBALL=$(readlink -f /local/mnt/workspace/build/wrynose-baseline/build/tmp/deploy/images/${{ matrix.board }}/qcom-multimedia-proprietary-image-${{ matrix.board }}.rootfs.qcomflash.tar.gz)
           DATE=$(date +%Y-%m-%d)
           SHORT_SHA=${GITHUB_SHA::7}
-          OUTDIR="/local/mnt/workspace/actions-runner/_work/release-${DATE}-${SHORT_SHA}"
+          OUTDIR="/local/mnt/workspace/actions-runner/_work/release-${{ matrix.board }}-${DATE}-${SHORT_SHA}"
           mkdir -p "$OUTDIR"
-          # Split into 1900 MB parts (under GitHub's 2 GB asset limit)
-          split -b 1900m "$TARBALL" "${OUTDIR}/photonvision-iq8275-${DATE}-${SHORT_SHA}.qcomflash.tar.gz.part"
+          split -b 1900m "$TARBALL" "${OUTDIR}/photonvision-${{ matrix.board }}-${DATE}-${SHORT_SHA}.qcomflash.tar.gz.part"
           ls -lh "$OUTDIR"/
           echo "files=${OUTDIR}/*.part*" >> $GITHUB_OUTPUT
-          echo "tag=photonvision-${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "name=PhotonVision IQ-8275 EVK — ${DATE} (${SHORT_SHA})" >> $GITHUB_OUTPUT
+          echo "tag=photonvision-${{ matrix.board }}-${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "name=PhotonVision ${{ matrix.board }} — ${DATE} (${SHORT_SHA})" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release with flash image
         uses: softprops/action-gh-release@v2
@@ -65,6 +74,8 @@ jobs:
           body: |
             Automated build from commit ${{ github.sha }}.
 
+            **Board:** ${{ matrix.board }}
+
             ## Flash instructions
             1. Reassemble: `cat *.partaa *.partab > image.qcomflash.tar.gz`
             2. Extract: `tar -xzf image.qcomflash.tar.gz`
@@ -73,7 +84,7 @@ jobs:
             ## Verified
             - Kernel: 6.18.37 (wrynose)
             - PhotonVision: 2026.3.4
-            - IMX577 CSI (Camera Serial Interface) camera support (QCS8275)
+            - IMX577 CSI camera support
             - Adreno shader fix included
           files: ${{ steps.artifact.outputs.files }}
           fail_on_unmatched_files: true
