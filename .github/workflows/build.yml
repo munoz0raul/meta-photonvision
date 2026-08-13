@@ -42,18 +42,20 @@ jobs:
           echo "Shader fix occurrences: $count"
           test "$count" -ge 1
 
-      - name: Stage artifact for release
+      - name: Stage and split artifact for release
         id: artifact
         run: |
           TARBALL=$(readlink -f /local/mnt/workspace/build/wrynose-baseline/build/tmp/deploy/images/iq-8275-evk/qcom-multimedia-proprietary-image-iq-8275-evk.rootfs.qcomflash.tar.gz)
           DATE=$(date +%Y-%m-%d)
           SHORT_SHA=${GITHUB_SHA::7}
-          DEST="/local/mnt/workspace/actions-runner/_work/release-photonvision-${DATE}-${SHORT_SHA}.qcomflash.tar.gz"
-          cp "$TARBALL" "$DEST"
-          echo "path=$DEST" >> $GITHUB_OUTPUT
+          OUTDIR="/local/mnt/workspace/actions-runner/_work/release-${DATE}-${SHORT_SHA}"
+          mkdir -p "$OUTDIR"
+          # Split into 1900 MB parts (under GitHub's 2 GB asset limit)
+          split -b 1900m "$TARBALL" "${OUTDIR}/photonvision-iq8275-${DATE}-${SHORT_SHA}.qcomflash.tar.gz.part"
+          ls -lh "$OUTDIR"/
+          echo "files=${OUTDIR}/*.part*" >> $GITHUB_OUTPUT
           echo "tag=photonvision-${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "name=PhotonVision IQ-8275 EVK — ${DATE} (${SHORT_SHA})" >> $GITHUB_OUTPUT
-          ls -lh "$DEST"
 
       - name: Create GitHub Release with flash image
         uses: softprops/action-gh-release@v2
@@ -64,13 +66,14 @@ jobs:
             Automated build from commit ${{ github.sha }}.
 
             ## Flash instructions
-            1. Extract the tarball
-            2. Follow the QDL flash procedure (SAIL first, then OS)
+            1. Reassemble: `cat *.partaa *.partab > image.qcomflash.tar.gz`
+            2. Extract: `tar -xzf image.qcomflash.tar.gz`
+            3. Flash SAIL first (spinor), then OS (ufs) with QDL
 
             ## Verified
             - Kernel: 6.18.37 (wrynose)
             - PhotonVision: 2026.3.4
-            - IMX577 CSI camera support (QCS8275)
+            - IMX577 CSI (Camera Serial Interface) camera support (QCS8275)
             - Adreno shader fix included
-          files: ${{ steps.artifact.outputs.path }}
+          files: ${{ steps.artifact.outputs.files }}
           fail_on_unmatched_files: true
