@@ -7,7 +7,10 @@ HOMEPAGE = "https://github.com/munoz0raul/photon-libcamera-gl-driver"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-SRCREV = "db12e1b19b3ba961d1dc799820ea88c8f63f9c96"
+# 27582b3: Fix Adreno GLES compiler abort on thresholding shader (QCS8275) —
+# the 1.877.2 shader compiler SIGABRTs on a negative-start int loop, which
+# crashed PhotonVision the moment a CSI camera's GPU pipeline started.
+SRCREV = "27582b3f7880c1c0028d86c31e0331135ba6f4dc"
 SRC_URI = "git://github.com/munoz0raul/photon-libcamera-gl-driver.git;protocol=https;branch=feature/imx577-qcs8275 \
            https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/thirdparty/frc2025/opencv/opencv-cpp/4.10.0-3/opencv-cpp-4.10.0-3-linuxarm64.zip;name=opencv_lib;subdir=opencv_lib \
            https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/thirdparty/frc2025/opencv/opencv-cpp/4.10.0-3/opencv-cpp-4.10.0-3-headers.zip;name=opencv_header;subdir=opencv_header \
