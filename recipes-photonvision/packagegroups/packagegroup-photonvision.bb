@@ -6,11 +6,12 @@ ready-to-run vision coprocessor."
 
 inherit packagegroup
 
-# libatomic is dynamically renamed per-arch (libatomic -> libatomic1), and an
-# allarch packagegroup is not allowed to depend on such packages. Several of
-# our RDEPENDS (the JRE, native camera libs) are arch-specific anyway, so make
-# this packagegroup machine-specific.
-PACKAGE_ARCH = "${MACHINE_ARCH}"
+# `inherit packagegroup` forces allarch, and the packagegroup QA check hard-errors
+# if an allarch packagegroup RDEPENDS on a dynamically-renamed package. The only
+# such dep here is libatomic (renamed to libatomic1). It is not listed below
+# because photonvision (the recipe) already RDEPENDS on libatomic directly, so it
+# is still pulled into the image transitively — the packagegroup does not need it.
+# The RDEPENDS below are all statically-named packages, so allarch is fine.
 
 RDEPENDS:${PN} = " \
     photonvision \
@@ -23,5 +24,4 @@ RDEPENDS:${PN} = " \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
     sqlite3 \
-    libatomic \
 "
